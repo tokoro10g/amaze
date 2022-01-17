@@ -85,9 +85,9 @@ impl Direction {
 impl Maze {
     pub const fn new(start: CoordXY, goal: CoordXY) -> Maze {
         Maze {
-            start: start,
-            goal: goal,
-            data: [Cell::new(); WIDTH*WIDTH],
+            start,
+            goal,
+            data: [Cell::new(); WIDTH * WIDTH],
         }
     }
 }
