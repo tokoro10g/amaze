@@ -1,0 +1,14 @@
+[package]
+name = "amaze"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+heapless = "0.7"
+modular-bitfield = "0.11"
+
+[features]
+maze_32 = []
+
+[[example]]
+name = "example"
