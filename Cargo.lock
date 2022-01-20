@@ -15,6 +15,7 @@ dependencies = [
 name = "amaze"
 version = "0.1.0"
 dependencies = [
+ "cfg-if",
  "heapless",
  "modular-bitfield",
 ]
