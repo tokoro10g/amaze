@@ -115,14 +115,14 @@ impl Maze {
             }
         }
         if width > WIDTH {
-            panic!("hoge");
+            panic!("Loaded data is too large");
         }
-        let mut line_no = 0;
         let mut coord = CoordXY {
             x: 0,
             y: (width - 1) as u8,
         };
-        for s in maze_str.split("\n") {
+        for (line_no, s) in maze_str.split('\n').enumerate() {
+            coord.y = (width - 1 - line_no / 2) as u8;
             if line_no % 2 == 0 {
                 for x in 0..width {
                     coord.x = x as u8;
@@ -143,14 +143,12 @@ impl Maze {
                 if coord.y == 0 {
                     break;
                 }
-                coord.y -= 1;
             }
-            line_no += 1;
         }
         maze
     }
     pub fn get_mutable_cell(&mut self, coord: CoordXY) -> &mut Cell {
-        return &mut self.data[coord.x as usize + coord.y as usize * WIDTH];
+        &mut self.data[coord.x as usize + coord.y as usize * WIDTH]
     }
     pub fn modify_data(&mut self, coord: CoordXY, direction: Direction, value: bool) {
         match direction {
@@ -159,14 +157,13 @@ impl Maze {
             Direction::South => self.get_mutable_cell(coord).set_south(value),
             Direction::West => self.get_mutable_cell(coord).set_west(value),
         }
-        match coord.add(direction) {
-            Ok(next_coord) => match direction {
+        if let Ok(next_coord) = coord.add(direction) {
+            match direction {
                 Direction::North => self.get_mutable_cell(next_coord).set_south(value),
                 Direction::East => self.get_mutable_cell(next_coord).set_west(value),
                 Direction::South => self.get_mutable_cell(next_coord).set_north(value),
                 Direction::West => self.get_mutable_cell(next_coord).set_east(value),
-            },
-            Err(_) => (),
+            }
         }
     }
 }
@@ -232,5 +229,4 @@ mod tests {
         assert!(Direction::South.to_vector_xy() == VectorXY { x: 0, y: -1 });
         assert!(Direction::West.to_vector_xy() == VectorXY { x: -1, y: 0 });
     }
-
 }
