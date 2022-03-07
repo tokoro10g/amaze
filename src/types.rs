@@ -110,7 +110,7 @@ impl Maze {
         // TODO(tokoro10g): Find start and goal
         let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
         let mut width = 0;
-        for w in [32, 16, 9, 8] {
+        for w in [32, 16, 9, 8, 4] {
             let nominal_len = (4 * w + 2) * (2 * w + 1);
             if maze_str.len() / nominal_len == 1 {
                 width = w;
@@ -158,8 +158,20 @@ impl Maze {
         maze
     }
 
+    pub fn get_cell_by_x_y(&self, x: u8, y: u8) -> Cell {
+        self.data[x as usize + y as usize * WIDTH]
+    }
+
+    pub fn get_cell(&self, coord: CoordXY) -> Cell {
+        self.get_cell_by_x_y(coord.x, coord.y)
+    }
+
+    pub fn get_mutable_cell_by_x_y(&mut self, x: u8, y: u8) -> &mut Cell {
+        &mut self.data[x as usize + y as usize * WIDTH]
+    }
+
     pub fn get_mutable_cell(&mut self, coord: CoordXY) -> &mut Cell {
-        &mut self.data[coord.x as usize + coord.y as usize * WIDTH]
+        self.get_mutable_cell_by_x_y(coord.x, coord.y)
     }
 
     pub fn modify_data(&mut self, coord: CoordXY, direction: Direction, value: bool) {
@@ -250,5 +262,62 @@ mod tests {
         assert!(Direction::East.to_vector_xy() == VectorXY { x: 1, y: 0 });
         assert!(Direction::South.to_vector_xy() == VectorXY { x: 0, y: -1 });
         assert!(Direction::West.to_vector_xy() == VectorXY { x: -1, y: 0 });
+    }
+
+    #[test]
+    fn maze_new() {
+        let maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 1, y: 1 });
+        assert!(maze.start == CoordXY { x: 0, y: 0 });
+        assert!(maze.goal == CoordXY { x: 1, y: 1 });
+        assert!(!maze.data[0].north());
+        assert!(!maze.data[0].east());
+        assert!(maze.data[0].south());
+        assert!(maze.data[0].west());
+    }
+
+    #[test]
+    fn maze_get_cell() {
+        let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
+        maze.data[0].set_north(true);
+        let mut cell = maze.get_cell(CoordXY { x: 0, y: 0 });
+        assert!(cell.north());
+        cell.set_east(true);
+        assert!(!maze.get_cell(CoordXY { x: 0, y: 0 }).east());
+    }
+
+    #[test]
+    fn maze_mutable_get_cell() {
+        let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
+        maze.data[0].set_north(true);
+        let cell = maze.get_mutable_cell(CoordXY { x: 0, y: 0 });
+        assert!(cell.north());
+        cell.set_east(true);
+        assert!(maze.get_mutable_cell(CoordXY { x: 0, y: 0 }).east());
+    }
+
+    #[test]
+    fn maze_modify_data() {
+        let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
+        maze.modify_data(CoordXY { x: 0, y: 0 }, Direction::North, true);
+        assert!(maze.get_cell_by_x_y(0, 0).north());
+        assert!(maze.get_cell_by_x_y(0, 1).south());
+    }
+
+    #[test]
+    fn maze_load() {
+        let maze_str = "\
+        +   +   +   +   +\n\
+        |                \n\
+        +   +   +   +   +\n\
+        |                \n\
+        +   +   +   +   +\n\
+        |                \n\
+        +---+---+   +   +\n\
+        |       |        \n\
+        +---+---+---+---+\n";
+        let maze = Maze::load(maze_str);
+        assert!(maze.get_cell_by_x_y(0, 0).north());
+        assert!(maze.get_cell_by_x_y(1, 0).north());
+        assert!(maze.get_cell_by_x_y(1, 0).east());
     }
 }
