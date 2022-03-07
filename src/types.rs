@@ -34,6 +34,7 @@ pub struct CoordXY {
     pub y: u8,
 }
 
+#[non_exhaustive]
 pub struct Maze {
     pub start: CoordXY,
     pub goal: CoordXY,
@@ -55,6 +56,7 @@ pub enum Direction {
     West,
 }
 
+#[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
     OutOfRange,
@@ -103,6 +105,7 @@ impl Maze {
         }
         Maze { start, goal, data }
     }
+
     pub fn load(maze_str: &str) -> Maze {
         // TODO(tokoro10g): Find start and goal
         let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
@@ -154,9 +157,11 @@ impl Maze {
         }
         maze
     }
+
     pub fn get_mutable_cell(&mut self, coord: CoordXY) -> &mut Cell {
         &mut self.data[coord.x as usize + coord.y as usize * WIDTH]
     }
+
     pub fn modify_data(&mut self, coord: CoordXY, direction: Direction, value: bool) {
         match direction {
             Direction::North => self.get_mutable_cell(coord).set_north(value),
