@@ -124,6 +124,7 @@ impl Maze {
         for (line_no, s) in maze_str.split('\n').enumerate() {
             coord.y = (width - 1 - line_no / 2) as u8;
             if line_no % 2 == 0 {
+                // Check for walls in north or south
                 for x in 0..width {
                     coord.x = x as u8;
                     if s.as_bytes()[2 + 4 * x] == b'-' {
@@ -131,10 +132,16 @@ impl Maze {
                     }
                 }
             } else {
+                // Check for walls in west or east
                 for x in 0..width {
                     coord.x = x as u8;
                     if s.as_bytes()[4 * x] == b'|' {
                         maze.modify_data(coord, Direction::West, true);
+                    }
+                    if s.as_bytes()[4 * x + 2] == b'S' {
+                        maze.start = coord;
+                    } else if s.as_bytes()[4 * x + 2] == b'G' {
+                        maze.goal = coord;
                     }
                     if s.as_bytes()[4 * x + 4] == b'|' {
                         maze.modify_data(coord, Direction::East, true);
@@ -178,7 +185,17 @@ impl fmt::Display for Maze {
             writeln!(f, "+").unwrap();
             for x in 0..WIDTH {
                 let cell = self.data[x + y * WIDTH];
-                write!(f, "{}   ", if cell.west() { "|" } else { " " }).unwrap();
+                let coord = CoordXY {
+                    x: x as u8,
+                    y: y as u8,
+                };
+                let mut cell_mark = " ";
+                if self.start == coord {
+                    cell_mark = "S";
+                } else if self.goal == coord {
+                    cell_mark = "G";
+                }
+                write!(f, "{} {} ", if cell.west() { "|" } else { " " }, cell_mark).unwrap();
             }
             writeln!(f, "|").unwrap();
         }
