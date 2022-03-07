@@ -126,8 +126,8 @@ impl Maze {
                 break;
             }
         }
-        if width > WIDTH {
-            panic!("Loaded data is too large");
+        if (width > WIDTH) || (width == 0) {
+            panic!("Loaded data has invalid size");
         }
         let mut coord = CoordXY {
             x: 0,
