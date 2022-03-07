@@ -64,6 +64,15 @@ pub enum Error {
 
 impl CoordXY {
     #[inline]
+    pub const fn validate(self) -> Result<(), Error> {
+        if (self.x as usize) < WIDTH && (self.y as usize) < WIDTH {
+            Ok(())
+        } else {
+            Err(Error::OutOfRange)
+        }
+    }
+
+    #[inline]
     pub const fn add(self, dir: Direction) -> Result<CoordXY, Error> {
         let d = dir.to_vector_xy();
         let new_x = self.x as i16 + d.x as i16;
@@ -227,6 +236,12 @@ impl fmt::Display for Maze {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn coord_xy_validate() {
+        assert!(CoordXY { x: 100, y: 100 }.validate() == Err(Error::OutOfRange));
+        assert!(CoordXY { x: 0, y: 0 }.validate() == Ok(()));
+    }
 
     #[test]
     fn coord_xy_add() {
