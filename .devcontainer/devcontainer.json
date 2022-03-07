@@ -1,0 +1,6 @@
+{
+    "image": "mcr.microsoft.com/vscode/devcontainers/rust:latest",
+    "extensions": [
+        "matklad.rust-analyzer"
+    ]
+}
