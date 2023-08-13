@@ -9,10 +9,11 @@ heapless = "0.7"
 modular-bitfield = "0.11"
 
 [features]
-default = ["maze_32x32"]
+default = ["maze_32x32", "debug"]
 maze_8x8 = []
 maze_16x16 = []
 maze_32x32 = []
+debug = []
 
 [[example]]
 name = "example"

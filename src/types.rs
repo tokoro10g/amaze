@@ -1,50 +1,25 @@
 #![forbid(unsafe_code)]
 
-use core::fmt;
+use core::{fmt, ops::Add};
+pub use heapless::Vec;
 use modular_bitfield::prelude::*;
 
 cfg_if::cfg_if! {
     if #[cfg(feature = "maze_8x8")] {
-        const WIDTH: usize = 8;
+        pub const WIDTH: usize = 8;
     } else if #[cfg(feature = "maze_16x16")] {
-        const WIDTH: usize = 16;
+        pub const WIDTH: usize = 16;
     } else if #[cfg(feature = "maze_32x32")] {
-        const WIDTH: usize = 32;
+        pub const WIDTH: usize = 32;
     } else {
         compile_error!("Select one of features: maze_{8x8, 16x16, 32x32}");
     }
 }
 
-#[bitfield]
-#[derive(Copy, Clone)]
-pub struct Cell {
-    pub north: bool,
-    pub east: bool,
-    pub west: bool,
-    pub south: bool,
-    pub chk_north: bool,
-    pub chk_east: bool,
-    pub chk_west: bool,
-    pub chk_south: bool,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct CoordXY {
-    pub x: u8,
-    pub y: u8,
-}
-
 #[non_exhaustive]
-pub struct Maze {
-    pub start: CoordXY,
-    pub goal: CoordXY,
-    pub data: [Cell; WIDTH * WIDTH],
-}
-
 #[derive(Debug, PartialEq, Eq)]
-pub struct VectorXY {
-    pub x: i8,
-    pub y: i8,
+pub enum Error {
+    OutOfRange,
 }
 
 #[non_exhaustive]
@@ -56,43 +31,85 @@ pub enum Direction {
     West,
 }
 
-#[non_exhaustive]
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    OutOfRange,
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug)]
+pub struct Coord1D {
+    value: u8,
+}
+impl Coord1D {
+    pub const MAX: u8 = WIDTH as u8 - 1;
+    cfg_if::cfg_if! {
+        if #[cfg(feature = "debug")]{
+            #[inline]
+            pub fn new(value: u8) -> Result<Coord1D, Error> {
+                if value > Coord1D::MAX {
+                    Err(Error::OutOfRange)
+                } else {
+                    Ok(Coord1D { value })
+                }
+            }
+        } else {
+            #[inline]
+            pub fn new(value: u8) -> Result<Coord1D, Error> {
+                Ok(Coord1D { value })
+            }
+        }
+    }
+    #[inline]
+    pub fn value(&self) -> u8 {
+        self.value
+    }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct CoordXY {
+    x: Coord1D,
+    y: Coord1D,
+}
 impl CoordXY {
     #[inline]
-    pub const fn validate(self) -> Result<(), Error> {
-        if (self.x as usize) < WIDTH && (self.y as usize) < WIDTH {
-            Ok(())
+    pub fn with_u8(x: u8, y: u8) -> Result<CoordXY, Error> {
+        if let (Ok(x), Ok(y)) = (Coord1D::new(x), Coord1D::new(y)) {
+            Ok(CoordXY { x, y })
         } else {
             Err(Error::OutOfRange)
         }
     }
-
     #[inline]
-    pub const fn add(self, dir: Direction) -> Result<CoordXY, Error> {
-        let d = dir.to_vector_xy();
-        let new_x = self.x as i16 + d.x as i16;
-        let new_y = self.y as i16 + d.y as i16;
-        if new_x >= 0 && new_y >= 0 && (new_x as usize) < WIDTH && (new_y as usize) < WIDTH {
-            Ok(CoordXY {
-                x: new_x as u8,
-                y: new_y as u8,
-            })
+    pub fn x(&self) -> Coord1D {
+        self.x
+    }
+    #[inline]
+    pub fn y(&self) -> Coord1D {
+        self.y
+    }
+}
+impl Add<VectorXY> for CoordXY {
+    type Output = Result<CoordXY, Error>;
+    fn add(self, rhs: VectorXY) -> Self::Output {
+        let new_x = self.x.value as i16 + rhs.x as i16;
+        let new_y = self.y.value as i16 + rhs.y as i16;
+        if new_x >= 0
+            && new_y >= 0
+            && (new_x as u8) <= Coord1D::MAX
+            && (new_y as u8) <= Coord1D::MAX
+        {
+            Ok(CoordXY::with_u8(new_x as u8, new_y as u8).unwrap())
         } else {
             Err(Error::OutOfRange)
         }
     }
 }
 
-impl Direction {
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct VectorXY {
+    pub x: i8,
+    pub y: i8,
+}
+impl From<Direction> for VectorXY {
     #[inline]
-    pub const fn to_vector_xy(self) -> VectorXY {
+    fn from(value: Direction) -> Self {
         use Direction::*;
-        match self {
+        match value {
             North => VectorXY { x: 0, y: 1 },
             East => VectorXY { x: 1, y: 0 },
             South => VectorXY { x: 0, y: -1 },
@@ -101,6 +118,26 @@ impl Direction {
     }
 }
 
+#[bitfield]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct Cell {
+    pub north: bool,
+    pub east: bool,
+    pub west: bool,
+    pub south: bool,
+    pub chk_north: bool,
+    pub chk_east: bool,
+    pub chk_west: bool,
+    pub chk_south: bool,
+}
+
+#[non_exhaustive]
+#[derive(Debug)]
+pub struct Maze {
+    pub start: CoordXY,
+    pub goal: CoordXY,
+    pub data: [Cell; WIDTH * WIDTH],
+}
 impl Maze {
     pub fn new(start: CoordXY, goal: CoordXY) -> Maze {
         let mut data = [Cell::new(); WIDTH * WIDTH];
@@ -114,11 +151,13 @@ impl Maze {
         }
         Maze { start, goal, data }
     }
-
-    pub fn load(maze_str: &str) -> Maze {
-        // TODO(tokoro10g): Find start and goal
-        let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
+    pub fn load_from_str(maze_str: &str) -> Maze {
+        let mut maze = Maze::new(
+            CoordXY::with_u8(0, 0).unwrap(),
+            CoordXY::with_u8(7, 7).unwrap(),
+        );
         let mut width = 0;
+        // TODO: Support arbitrary size
         for w in [32, 16, 9, 8, 4] {
             let nominal_len = (4 * w + 2) * (2 * w + 1);
             if maze_str.len() / nominal_len == 1 {
@@ -127,28 +166,25 @@ impl Maze {
             }
         }
         if (width > WIDTH) || (width == 0) {
-            panic!("Loaded data has invalid size");
+            panic!("Loaded data has invalid size {}", width);
         }
-        let mut coord = CoordXY {
-            x: 0,
-            y: (width - 1) as u8,
-        };
+        let mut coord = CoordXY::with_u8(0, (width - 1) as u8).unwrap();
         for (line_no, s) in maze_str.split('\n').enumerate() {
-            coord.y = (width - 1 - line_no / 2) as u8;
+            coord.y = Coord1D::new((width - 1 - line_no / 2) as u8).unwrap();
             if line_no % 2 == 0 {
                 // Check for walls in north or south
                 for x in 0..width {
-                    coord.x = x as u8;
+                    coord.x = Coord1D::new(x as u8).unwrap();
                     if s.as_bytes()[2 + 4 * x] == b'-' {
-                        maze.modify_data(coord, Direction::North, true);
+                        maze.set_cell_state(coord, Direction::North, true);
                     }
                 }
             } else {
                 // Check for walls in west or east
                 for x in 0..width {
-                    coord.x = x as u8;
+                    coord.x = Coord1D::new(x as u8).unwrap();
                     if s.as_bytes()[4 * x] == b'|' {
-                        maze.modify_data(coord, Direction::West, true);
+                        maze.set_cell_state(coord, Direction::West, true);
                     }
                     if s.as_bytes()[4 * x + 2] == b'S' {
                         maze.start = coord;
@@ -156,51 +192,51 @@ impl Maze {
                         maze.goal = coord;
                     }
                     if s.as_bytes()[4 * x + 4] == b'|' {
-                        maze.modify_data(coord, Direction::East, true);
+                        maze.set_cell_state(coord, Direction::East, true);
                     }
                 }
-                if coord.y == 0 {
+                if coord.y.value == 0 {
                     break;
                 }
             }
         }
         maze
     }
-
-    pub fn get_cell_by_x_y(&self, x: u8, y: u8) -> Cell {
-        self.data[x as usize + y as usize * WIDTH]
+    #[inline]
+    pub fn cell_by_x_y(&self, x: Coord1D, y: Coord1D) -> Cell {
+        // NOTE: it is ensured that `x` and `y` are within the range [0, WIDTH).
+        self.data[x.value as usize + y.value as usize * WIDTH]
     }
-
-    pub fn get_cell(&self, coord: CoordXY) -> Cell {
-        self.get_cell_by_x_y(coord.x, coord.y)
+    #[inline]
+    pub fn cell(&self, coord: CoordXY) -> Cell {
+        self.cell_by_x_y(coord.x, coord.y)
     }
-
-    pub fn get_mutable_cell_by_x_y(&mut self, x: u8, y: u8) -> &mut Cell {
-        &mut self.data[x as usize + y as usize * WIDTH]
+    #[inline]
+    pub fn mutable_cell_by_x_y(&mut self, x: Coord1D, y: Coord1D) -> &mut Cell {
+        // NOTE: it is ensured that `x` and `y` are within the range [0, WIDTH).
+        &mut self.data[x.value as usize + y.value as usize * WIDTH]
     }
-
-    pub fn get_mutable_cell(&mut self, coord: CoordXY) -> &mut Cell {
-        self.get_mutable_cell_by_x_y(coord.x, coord.y)
+    #[inline]
+    pub fn mutable_cell(&mut self, coord: CoordXY) -> &mut Cell {
+        self.mutable_cell_by_x_y(coord.x, coord.y)
     }
-
-    pub fn modify_data(&mut self, coord: CoordXY, direction: Direction, value: bool) {
+    pub fn set_cell_state(&mut self, coord: CoordXY, direction: Direction, state: bool) {
         match direction {
-            Direction::North => self.get_mutable_cell(coord).set_north(value),
-            Direction::East => self.get_mutable_cell(coord).set_east(value),
-            Direction::South => self.get_mutable_cell(coord).set_south(value),
-            Direction::West => self.get_mutable_cell(coord).set_west(value),
+            Direction::North => self.mutable_cell(coord).set_north(state),
+            Direction::East => self.mutable_cell(coord).set_east(state),
+            Direction::South => self.mutable_cell(coord).set_south(state),
+            Direction::West => self.mutable_cell(coord).set_west(state),
         }
-        if let Ok(next_coord) = coord.add(direction) {
+        if let Ok(next_coord) = coord + direction.into() {
             match direction {
-                Direction::North => self.get_mutable_cell(next_coord).set_south(value),
-                Direction::East => self.get_mutable_cell(next_coord).set_west(value),
-                Direction::South => self.get_mutable_cell(next_coord).set_north(value),
-                Direction::West => self.get_mutable_cell(next_coord).set_east(value),
+                Direction::North => self.mutable_cell(next_coord).set_south(state),
+                Direction::East => self.mutable_cell(next_coord).set_west(state),
+                Direction::South => self.mutable_cell(next_coord).set_north(state),
+                Direction::West => self.mutable_cell(next_coord).set_east(state),
             }
         }
     }
 }
-
 impl fmt::Display for Maze {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for y in (0..WIDTH).rev() {
@@ -211,10 +247,7 @@ impl fmt::Display for Maze {
             writeln!(f, "+").unwrap();
             for x in 0..WIDTH {
                 let cell = self.data[x + y * WIDTH];
-                let coord = CoordXY {
-                    x: x as u8,
-                    y: y as u8,
-                };
+                let coord = CoordXY::with_u8(x as u8, y as u8).unwrap();
                 let mut cell_mark = " ";
                 if self.start == coord {
                     cell_mark = "S";
@@ -237,90 +270,7 @@ impl fmt::Display for Maze {
 mod tests {
     use super::*;
 
-    #[test]
-    fn coord_xy_validate() {
-        assert!(CoordXY { x: 100, y: 100 }.validate() == Err(Error::OutOfRange));
-        assert!(CoordXY { x: 0, y: 0 }.validate() == Ok(()));
-    }
-
-    #[test]
-    fn coord_xy_add() {
-        assert!(CoordXY { x: 0, y: 0 }.add(Direction::North) == Ok(CoordXY { x: 0, y: 1 }));
-        assert!(CoordXY { x: 0, y: 0 }.add(Direction::East) == Ok(CoordXY { x: 1, y: 0 }));
-    }
-
-    #[test]
-    fn coord_xy_add_overflow() {
-        assert!(CoordXY { x: 0, y: 0 }.add(Direction::West) == Err(Error::OutOfRange));
-        assert!(CoordXY { x: 0, y: 0 }.add(Direction::South) == Err(Error::OutOfRange));
-        assert!(
-            CoordXY {
-                x: (WIDTH - 1) as u8,
-                y: 0
-            }
-            .add(Direction::East)
-                == Err(Error::OutOfRange)
-        );
-        assert!(
-            CoordXY {
-                x: 0,
-                y: (WIDTH - 1) as u8
-            }
-            .add(Direction::North)
-                == Err(Error::OutOfRange)
-        );
-    }
-
-    #[test]
-    fn direction_to_vector_xy() {
-        assert!(Direction::North.to_vector_xy() == VectorXY { x: 0, y: 1 });
-        assert!(Direction::East.to_vector_xy() == VectorXY { x: 1, y: 0 });
-        assert!(Direction::South.to_vector_xy() == VectorXY { x: 0, y: -1 });
-        assert!(Direction::West.to_vector_xy() == VectorXY { x: -1, y: 0 });
-    }
-
-    #[test]
-    fn maze_new() {
-        let maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 1, y: 1 });
-        assert!(maze.start == CoordXY { x: 0, y: 0 });
-        assert!(maze.goal == CoordXY { x: 1, y: 1 });
-        assert!(!maze.data[0].north());
-        assert!(!maze.data[0].east());
-        assert!(maze.data[0].south());
-        assert!(maze.data[0].west());
-    }
-
-    #[test]
-    fn maze_get_cell() {
-        let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
-        maze.data[0].set_north(true);
-        let mut cell = maze.get_cell(CoordXY { x: 0, y: 0 });
-        assert!(cell.north());
-        cell.set_east(true);
-        assert!(!maze.get_cell(CoordXY { x: 0, y: 0 }).east());
-    }
-
-    #[test]
-    fn maze_mutable_get_cell() {
-        let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
-        maze.data[0].set_north(true);
-        let cell = maze.get_mutable_cell(CoordXY { x: 0, y: 0 });
-        assert!(cell.north());
-        cell.set_east(true);
-        assert!(maze.get_mutable_cell(CoordXY { x: 0, y: 0 }).east());
-    }
-
-    #[test]
-    fn maze_modify_data() {
-        let mut maze = Maze::new(CoordXY { x: 0, y: 0 }, CoordXY { x: 7, y: 7 });
-        maze.modify_data(CoordXY { x: 0, y: 0 }, Direction::North, true);
-        assert!(maze.get_cell_by_x_y(0, 0).north());
-        assert!(maze.get_cell_by_x_y(0, 1).south());
-    }
-
-    #[test]
-    fn maze_load() {
-        let maze_str = "\
+    const MAZE_STR: &str = "\
         +   +   +   +   +\n\
         |                \n\
         +   +   +   +   +\n\
@@ -330,9 +280,122 @@ mod tests {
         +---+---+   +   +\n\
         |       |        \n\
         +---+---+---+---+\n";
-        let maze = Maze::load(maze_str);
-        assert!(maze.get_cell_by_x_y(0, 0).north());
-        assert!(maze.get_cell_by_x_y(1, 0).north());
-        assert!(maze.get_cell_by_x_y(1, 0).east());
+
+    #[test]
+    fn coord_1d() {
+        assert!(Coord1D::new(0).unwrap().value() == 0);
+    }
+    #[test]
+    fn coord_1d_out_of_range() {
+        assert!(Coord1D::new(255) == Err(Error::OutOfRange));
+    }
+    #[test]
+    fn coord_xy_with_u8() {
+        let c = CoordXY::with_u8(0, 1).unwrap();
+        assert!(c.x() == Coord1D::new(0).unwrap());
+        assert!(c.y() == Coord1D::new(1).unwrap());
+    }
+    #[test]
+    fn coord_xy_with_u8_out_of_range() {
+        assert!(CoordXY::with_u8(0, 255) == Err(Error::OutOfRange));
+    }
+    #[test]
+    fn coord_xy_add() {
+        assert!(
+            CoordXY::with_u8(0, 0).unwrap() + Direction::North.into()
+                == Ok(CoordXY::with_u8(0, 1).unwrap())
+        );
+        assert!(
+            CoordXY::with_u8(0, 0).unwrap() + Direction::East.into()
+                == Ok(CoordXY::with_u8(1, 0).unwrap())
+        );
+    }
+    #[test]
+    fn coord_xy_add_out_of_range() {
+        assert!(CoordXY::with_u8(0, 0).unwrap() + Direction::West.into() == Err(Error::OutOfRange));
+        assert!(
+            CoordXY::with_u8(0, 0).unwrap() + Direction::South.into() == Err(Error::OutOfRange)
+        );
+        assert!(
+            CoordXY::with_u8(Coord1D::MAX, 0).unwrap() + Direction::East.into()
+                == Err(Error::OutOfRange)
+        );
+        assert!(
+            CoordXY::with_u8(0, Coord1D::MAX).unwrap() + Direction::North.into()
+                == Err(Error::OutOfRange)
+        );
+    }
+    #[test]
+    fn direction_into_vector_xy() {
+        assert!(VectorXY { x: 0, y: 1 } == Direction::North.into());
+        assert!(VectorXY { x: 1, y: 0 } == Direction::East.into());
+        assert!(VectorXY { x: 0, y: -1 } == Direction::South.into());
+        assert!(VectorXY { x: -1, y: 0 } == Direction::West.into());
+    }
+    #[test]
+    fn maze_new() {
+        let maze = Maze::new(
+            CoordXY::with_u8(0, 0).unwrap(),
+            CoordXY::with_u8(1, 1).unwrap(),
+        );
+        assert!(maze.start == CoordXY::with_u8(0, 0).unwrap());
+        assert!(maze.goal == CoordXY::with_u8(1, 1).unwrap());
+        assert!(!maze.data[0].north());
+        assert!(!maze.data[0].east());
+        assert!(maze.data[0].south());
+        assert!(maze.data[0].west());
+    }
+    #[test]
+    fn maze_cell() {
+        let mut maze = Maze::new(
+            CoordXY::with_u8(0, 0).unwrap(),
+            CoordXY::with_u8(7, 7).unwrap(),
+        );
+        maze.data[0].set_north(true);
+        let mut cell = maze.cell(CoordXY::with_u8(0, 0).unwrap());
+        assert!(cell.north());
+        cell.set_east(true);
+        // Since `cell` is just a copy, set_east does not affect the original object
+        assert!(!maze.cell(CoordXY::with_u8(0, 0).unwrap()).east());
+    }
+    #[test]
+    fn maze_mutable_cell() {
+        let mut maze = Maze::new(
+            CoordXY::with_u8(0, 0).unwrap(),
+            CoordXY::with_u8(7, 7).unwrap(),
+        );
+        maze.data[0].set_north(true);
+        let cell = maze.mutable_cell(CoordXY::with_u8(0, 0).unwrap());
+        assert!(cell.north());
+        cell.set_east(true);
+        // Since `cell` is a mutable reference, set_east affects the original object
+        assert!(maze.mutable_cell(CoordXY::with_u8(0, 0).unwrap()).east());
+    }
+    #[test]
+    fn maze_set_cell_state() {
+        let mut maze = Maze::new(
+            CoordXY::with_u8(0, 0).unwrap(),
+            CoordXY::with_u8(7, 7).unwrap(),
+        );
+        maze.set_cell_state(CoordXY::with_u8(0, 0).unwrap(), Direction::North, true);
+        assert!(maze
+            .cell_by_x_y(Coord1D::new(0).unwrap(), Coord1D::new(0).unwrap())
+            .north());
+        assert!(maze
+            .cell_by_x_y(Coord1D::new(0).unwrap(), Coord1D::new(1).unwrap())
+            .south());
+    }
+    #[test]
+    fn maze_load() {
+        let maze = Maze::load_from_str(MAZE_STR);
+        assert!(maze
+            .cell_by_x_y(Coord1D::new(0).unwrap(), Coord1D::new(0).unwrap())
+            .north());
+        assert!(maze
+            .cell_by_x_y(Coord1D::new(1).unwrap(), Coord1D::new(0).unwrap())
+            .north());
+        assert!(maze
+            .cell_by_x_y(Coord1D::new(1).unwrap(), Coord1D::new(0).unwrap())
+            .east());
     }
 }
