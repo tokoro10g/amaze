@@ -1,6 +1,16 @@
 {
     "image": "mcr.microsoft.com/vscode/devcontainers/rust:latest",
-    "extensions": [
-        "matklad.rust-analyzer"
-    ]
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "rust-lang.rust-analyzer"
+            ],
+            "settings": {
+                "rust-analyzer.linkedProjects": [
+                    "./Cargo.toml"
+                ],
+                "rust-analyzer.showUnlinkedFileNotification": false
+            }
+        }
+    }
 }
