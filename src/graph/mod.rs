@@ -64,10 +64,7 @@ impl<T: GraphBase> Copy for NodeIndex<T> {}
 impl<T: GraphBase> Clone for NodeIndex<T> {
     #[inline]
     fn clone(&self) -> Self {
-        Self {
-            value: self.value,
-            graph_type: PhantomData,
-        }
+        *self
     }
 }
 
