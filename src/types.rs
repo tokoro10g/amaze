@@ -20,6 +20,8 @@ cfg_if::cfg_if! {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     OutOfRange,
+    InvalidLocation,
+    InvalidDirection,
 }
 
 #[non_exhaustive]
@@ -125,6 +127,22 @@ impl From<Direction> for VectorXY {
             West => VectorXY { x: -1, y: 0 },
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CellLocalLocation {
+    Center,
+    North,
+    East,
+    South,
+    West,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AgentState {
+    pub location: CoordXY,
+    pub local_location: CellLocalLocation,
+    pub heading_vector: VectorXY,
 }
 
 #[bitfield]
