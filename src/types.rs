@@ -139,6 +139,26 @@ pub struct Cell {
     pub chk_west: bool,
     pub chk_south: bool,
 }
+impl Cell {
+    pub fn query_by_direction(&self, direction: Direction) -> bool {
+        use Direction::*;
+        match direction {
+            North => self.north(),
+            East => self.east(),
+            South => self.south(),
+            West => self.west(),
+        }
+    }
+    pub fn query_chk_by_direction(&self, direction: Direction) -> bool {
+        use Direction::*;
+        match direction {
+            North => self.chk_north(),
+            East => self.chk_east(),
+            South => self.chk_south(),
+            West => self.chk_west(),
+        }
+    }
+}
 
 #[non_exhaustive]
 #[derive(Debug)]
@@ -351,6 +371,20 @@ mod tests {
         assert!(VectorXY { x: 1, y: 0 } == Direction::East.into());
         assert!(VectorXY { x: 0, y: -1 } == Direction::South.into());
         assert!(VectorXY { x: -1, y: 0 } == Direction::West.into());
+    }
+    #[test]
+    fn cell_query_by_direction() {
+        let mut cell = Cell::new();
+        cell.set_east(true);
+        assert!(cell.query_by_direction(Direction::East));
+        assert!(!cell.query_by_direction(Direction::North));
+    }
+    #[test]
+    fn cell_query_chk_by_direction() {
+        let mut cell = Cell::new();
+        cell.set_chk_east(true);
+        assert!(cell.query_chk_by_direction(Direction::East));
+        assert!(!cell.query_chk_by_direction(Direction::North));
     }
     #[test]
     fn maze_new() {
