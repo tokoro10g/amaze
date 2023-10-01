@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use core::{fmt, ops::Add};
+use core::{fmt, ops::Add, ops::Sub};
 pub use heapless::Vec;
 use modular_bitfield::prelude::*;
 
@@ -96,6 +96,15 @@ impl Add<VectorXY> for CoordXY {
             Ok(CoordXY::with_u8(new_x as u8, new_y as u8).unwrap())
         } else {
             Err(Error::OutOfRange)
+        }
+    }
+}
+impl Sub<CoordXY> for CoordXY {
+    type Output = VectorXY;
+    fn sub(self, rhs: CoordXY) -> Self::Output {
+        VectorXY {
+            x: self.x.value as i8 - rhs.x.value as i8,
+            y: self.y.value as i8 - rhs.y.value as i8,
         }
     }
 }
@@ -323,6 +332,17 @@ mod tests {
         assert!(
             CoordXY::with_u8(0, Coord1D::MAX).unwrap() + Direction::North.into()
                 == Err(Error::OutOfRange)
+        );
+    }
+    #[test]
+    fn coord_xy_sub() {
+        assert!(
+            CoordXY::with_u8(2, 1).unwrap() - CoordXY::with_u8(1, 0).unwrap()
+                == VectorXY { x: 1, y: 1 }
+        );
+        assert!(
+            CoordXY::with_u8(1, 0).unwrap() - CoordXY::with_u8(1, 2).unwrap()
+                == VectorXY { x: 0, y: -2 }
         );
     }
     #[test]
