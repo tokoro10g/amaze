@@ -40,17 +40,17 @@ impl Coord1D {
     cfg_if::cfg_if! {
         if #[cfg(feature = "debug")]{
             #[inline]
-            pub fn new(value: u8) -> Result<Coord1D, Error> {
-                if value > Coord1D::MAX {
+            pub fn new(value: u8) -> Result<Self, Error> {
+                if value > Self::MAX {
                     Err(Error::OutOfRange)
                 } else {
-                    Ok(Coord1D { value })
+                    Ok(Self { value })
                 }
             }
         } else {
             #[inline]
-            pub fn new(value: u8) -> Result<Coord1D, Error> {
-                Ok(Coord1D { value })
+            pub fn new(value: u8) -> Result<Self, Error> {
+                Ok(Self { value })
             }
         }
     }
@@ -67,9 +67,9 @@ pub struct CoordXY {
 }
 impl CoordXY {
     #[inline]
-    pub fn with_u8(x: u8, y: u8) -> Result<CoordXY, Error> {
+    pub fn with_u8(x: u8, y: u8) -> Result<Self, Error> {
         if let (Ok(x), Ok(y)) = (Coord1D::new(x), Coord1D::new(y)) {
-            Ok(CoordXY { x, y })
+            Ok(Self { x, y })
         } else {
             Err(Error::OutOfRange)
         }
@@ -139,7 +139,7 @@ pub struct Maze {
     pub data: [Cell; WIDTH * WIDTH],
 }
 impl Maze {
-    pub fn new(start: CoordXY, goal: CoordXY) -> Maze {
+    pub fn new(start: CoordXY, goal: CoordXY) -> Self {
         let mut data = [Cell::new(); WIDTH * WIDTH];
         for x in 0..WIDTH {
             data[x].set_south(true);
@@ -149,10 +149,10 @@ impl Maze {
             data[y * WIDTH].set_west(true);
             data[WIDTH - 1 + y * WIDTH].set_east(true);
         }
-        Maze { start, goal, data }
+        Self { start, goal, data }
     }
-    pub fn load_from_str(maze_str: &str) -> Maze {
-        let mut maze = Maze::new(
+    pub fn load_from_str(maze_str: &str) -> Self {
+        let mut maze = Self::new(
             CoordXY::with_u8(0, 0).unwrap(),
             CoordXY::with_u8(7, 7).unwrap(),
         );
