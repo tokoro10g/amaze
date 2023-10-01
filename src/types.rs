@@ -375,87 +375,100 @@ mod tests {
 
     #[test]
     fn direction_inverted() {
-        assert!(Direction::North.inverted() == Direction::South);
-        assert!(Direction::East.inverted() == Direction::West);
-        assert!(Direction::South.inverted() == Direction::North);
-        assert!(Direction::West.inverted() == Direction::East);
-        assert!(Direction::North.inverted().inverted() == Direction::North);
-        assert!(Direction::East.inverted().inverted() == Direction::East);
+        assert_eq!(Direction::North.inverted(), Direction::South);
+        assert_eq!(Direction::East.inverted(), Direction::West);
+        assert_eq!(Direction::South.inverted(), Direction::North);
+        assert_eq!(Direction::West.inverted(), Direction::East);
+        assert_eq!(Direction::North.inverted().inverted(), Direction::North);
+        assert_eq!(Direction::East.inverted().inverted(), Direction::East);
     }
     #[test]
     fn direction_from_vector_xy() {
-        assert!(Direction::North == VectorXY { x: 0, y: 1 }.try_into().unwrap());
-        assert!(Direction::East == VectorXY { x: 1, y: 0 }.try_into().unwrap());
-        assert!(Direction::South == VectorXY { x: 0, y: -1 }.try_into().unwrap());
-        assert!(Direction::West == VectorXY { x: -1, y: 0 }.try_into().unwrap());
+        assert_eq!(
+            Direction::North,
+            VectorXY { x: 0, y: 1 }.try_into().unwrap()
+        );
+        assert_eq!(Direction::East, VectorXY { x: 1, y: 0 }.try_into().unwrap());
+        assert_eq!(
+            Direction::South,
+            VectorXY { x: 0, y: -1 }.try_into().unwrap()
+        );
+        assert_eq!(
+            Direction::West,
+            VectorXY { x: -1, y: 0 }.try_into().unwrap()
+        );
     }
     #[test]
     fn direction_from_vector_xy_invalid_vector() {
         let direction: Result<Direction, Error> = VectorXY { x: 2, y: 3 }.try_into();
         assert!(direction.is_err());
-        assert!(direction.err() == Some(Error::InvalidVector));
+        assert_eq!(direction.err(), Some(Error::InvalidVector));
     }
     #[test]
     fn coord_1d() {
-        assert!(Coord1D::new(0).unwrap().value() == 0);
+        assert_eq!(Coord1D::new(0).unwrap().value(), 0);
     }
     #[test]
     fn coord_1d_out_of_range() {
-        assert!(Coord1D::new(255) == Err(Error::OutOfRange));
+        assert_eq!(Coord1D::new(255), Err(Error::OutOfRange));
     }
     #[test]
     fn coord_xy_with_u8() {
         let c = CoordXY::with_u8(0, 1).unwrap();
-        assert!(c.x() == Coord1D::new(0).unwrap());
-        assert!(c.y() == Coord1D::new(1).unwrap());
+        assert_eq!(c.x(), Coord1D::new(0).unwrap());
+        assert_eq!(c.y(), Coord1D::new(1).unwrap());
     }
     #[test]
     fn coord_xy_with_u8_out_of_range() {
-        assert!(CoordXY::with_u8(0, 255) == Err(Error::OutOfRange));
+        assert_eq!(CoordXY::with_u8(0, 255), Err(Error::OutOfRange));
     }
     #[test]
     fn coord_xy_add() {
-        assert!(
-            CoordXY::with_u8(0, 0).unwrap() + Direction::North.into()
-                == Ok(CoordXY::with_u8(0, 1).unwrap())
+        assert_eq!(
+            CoordXY::with_u8(0, 0).unwrap() + Direction::North.into(),
+            Ok(CoordXY::with_u8(0, 1).unwrap())
         );
-        assert!(
-            CoordXY::with_u8(0, 0).unwrap() + Direction::East.into()
-                == Ok(CoordXY::with_u8(1, 0).unwrap())
+        assert_eq!(
+            CoordXY::with_u8(0, 0).unwrap() + Direction::East.into(),
+            Ok(CoordXY::with_u8(1, 0).unwrap())
         );
     }
     #[test]
     fn coord_xy_add_out_of_range() {
-        assert!(CoordXY::with_u8(0, 0).unwrap() + Direction::West.into() == Err(Error::OutOfRange));
-        assert!(
-            CoordXY::with_u8(0, 0).unwrap() + Direction::South.into() == Err(Error::OutOfRange)
+        assert_eq!(
+            CoordXY::with_u8(0, 0).unwrap() + Direction::West.into(),
+            Err(Error::OutOfRange)
         );
-        assert!(
-            CoordXY::with_u8(Coord1D::MAX, 0).unwrap() + Direction::East.into()
-                == Err(Error::OutOfRange)
+        assert_eq!(
+            CoordXY::with_u8(0, 0).unwrap() + Direction::South.into(),
+            Err(Error::OutOfRange)
         );
-        assert!(
-            CoordXY::with_u8(0, Coord1D::MAX).unwrap() + Direction::North.into()
-                == Err(Error::OutOfRange)
+        assert_eq!(
+            CoordXY::with_u8(Coord1D::MAX, 0).unwrap() + Direction::East.into(),
+            Err(Error::OutOfRange)
+        );
+        assert_eq!(
+            CoordXY::with_u8(0, Coord1D::MAX).unwrap() + Direction::North.into(),
+            Err(Error::OutOfRange)
         );
     }
     #[test]
     fn coord_xy_sub() {
-        assert!(
-            CoordXY::with_u8(2, 1).unwrap() - CoordXY::with_u8(1, 0).unwrap()
-                == VectorXY { x: 1, y: 1 }
+        assert_eq!(
+            CoordXY::with_u8(2, 1).unwrap() - CoordXY::with_u8(1, 0).unwrap(),
+            VectorXY { x: 1, y: 1 }
         );
-        assert!(
-            CoordXY::with_u8(1, 0).unwrap() - CoordXY::with_u8(1, 2).unwrap()
-                == VectorXY { x: 0, y: -2 }
+        assert_eq!(
+            CoordXY::with_u8(1, 0).unwrap() - CoordXY::with_u8(1, 2).unwrap(),
+            VectorXY { x: 0, y: -2 }
         );
     }
     #[test]
     fn direction_into_vector_xy() {
-        assert!(VectorXY { x: 0, y: 1 } == Direction::North.into());
-        assert!(VectorXY { x: 1, y: 0 } == Direction::East.into());
-        assert!(VectorXY { x: 0, y: -1 } == Direction::South.into());
-        assert!(VectorXY { x: -1, y: 0 } == Direction::West.into());
+        assert_eq!(VectorXY { x: 0, y: 1 }, Direction::North.into());
+        assert_eq!(VectorXY { x: 1, y: 0 }, Direction::East.into());
+        assert_eq!(VectorXY { x: 0, y: -1 }, Direction::South.into());
+        assert_eq!(VectorXY { x: -1, y: 0 }, Direction::West.into());
     }
     #[test]
     fn cell_state_by_direction() {
@@ -493,8 +506,8 @@ mod tests {
             CoordXY::with_u8(0, 0).unwrap(),
             CoordXY::with_u8(1, 1).unwrap(),
         );
-        assert!(maze.start == CoordXY::with_u8(0, 0).unwrap());
-        assert!(maze.goal == CoordXY::with_u8(1, 1).unwrap());
+        assert_eq!(maze.start, CoordXY::with_u8(0, 0).unwrap());
+        assert_eq!(maze.goal, CoordXY::with_u8(1, 1).unwrap());
         assert!(!maze.data[0].north());
         assert!(!maze.data[0].east());
         assert!(maze.data[0].south());
