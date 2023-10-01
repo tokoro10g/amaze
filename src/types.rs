@@ -177,12 +177,12 @@ pub struct AgentState {
 pub struct Cell {
     pub north: bool,
     pub east: bool,
-    pub west: bool,
     pub south: bool,
-    pub chk_north: bool,
-    pub chk_east: bool,
-    pub chk_west: bool,
-    pub chk_south: bool,
+    pub west: bool,
+    pub check_north: bool,
+    pub check_east: bool,
+    pub check_south: bool,
+    pub check_west: bool,
 }
 impl Cell {
     pub fn query_by_direction(&self, direction: Direction) -> bool {
@@ -194,13 +194,31 @@ impl Cell {
             West => self.west(),
         }
     }
-    pub fn query_chk_by_direction(&self, direction: Direction) -> bool {
+    pub fn query_check_by_direction(&self, direction: Direction) -> bool {
         use Direction::*;
         match direction {
-            North => self.chk_north(),
-            East => self.chk_east(),
-            South => self.chk_south(),
-            West => self.chk_west(),
+            North => self.check_north(),
+            East => self.check_east(),
+            South => self.check_south(),
+            West => self.check_west(),
+        }
+    }
+    pub fn set_by_direction(&mut self, direction: Direction, value: bool) {
+        use Direction::*;
+        match direction {
+            North => self.set_north(value),
+            East => self.set_east(value),
+            South => self.set_south(value),
+            West => self.set_west(value),
+        }
+    }
+    pub fn set_check_by_direction(&mut self, direction: Direction, value: bool) {
+        use Direction::*;
+        match direction {
+            North => self.set_check_north(value),
+            East => self.set_check_east(value),
+            South => self.set_check_south(value),
+            West => self.set_check_west(value),
         }
     }
 }
@@ -295,19 +313,18 @@ impl Maze {
         self.mutable_cell_by_x_y(coord.x, coord.y)
     }
     pub fn set_cell_state(&mut self, coord: CoordXY, direction: Direction, state: bool) {
-        match direction {
-            Direction::North => self.mutable_cell(coord).set_north(state),
-            Direction::East => self.mutable_cell(coord).set_east(state),
-            Direction::South => self.mutable_cell(coord).set_south(state),
-            Direction::West => self.mutable_cell(coord).set_west(state),
-        }
+        self.mutable_cell(coord).set_by_direction(direction, state);
         if let Ok(next_coord) = coord + direction.into() {
-            match direction {
-                Direction::North => self.mutable_cell(next_coord).set_south(state),
-                Direction::East => self.mutable_cell(next_coord).set_west(state),
-                Direction::South => self.mutable_cell(next_coord).set_north(state),
-                Direction::West => self.mutable_cell(next_coord).set_east(state),
-            }
+            self.mutable_cell(next_coord)
+                .set_by_direction(direction.inverted(), state);
+        }
+    }
+    pub fn set_cell_check_state(&mut self, coord: CoordXY, direction: Direction, state: bool) {
+        self.mutable_cell(coord)
+            .set_check_by_direction(direction, state);
+        if let Ok(next_coord) = coord + direction.into() {
+            self.mutable_cell(next_coord)
+                .set_check_by_direction(direction.inverted(), state);
         }
     }
 }
@@ -447,11 +464,11 @@ mod tests {
         assert!(!cell.query_by_direction(Direction::North));
     }
     #[test]
-    fn cell_query_chk_by_direction() {
+    fn cell_query_check_by_direction() {
         let mut cell = Cell::new();
-        cell.set_chk_east(true);
-        assert!(cell.query_chk_by_direction(Direction::East));
-        assert!(!cell.query_chk_by_direction(Direction::North));
+        cell.set_check_east(true);
+        assert!(cell.query_check_by_direction(Direction::East));
+        assert!(!cell.query_check_by_direction(Direction::North));
     }
     #[test]
     fn maze_new() {
