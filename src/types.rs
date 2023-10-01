@@ -1,6 +1,6 @@
 #![forbid(unsafe_code)]
 
-use core::{fmt, ops::Add};
+use core::{fmt, ops::Add, ops::Sub};
 pub use heapless::Vec;
 use modular_bitfield::prelude::*;
 
@@ -17,18 +17,47 @@ cfg_if::cfg_if! {
 }
 
 #[non_exhaustive]
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Error {
     OutOfRange,
+    InvalidLocation,
+    InvalidDirection,
+    InvalidVector,
 }
 
 #[non_exhaustive]
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Direction {
     North,
     East,
     South,
     West,
+}
+impl Direction {
+    #[inline]
+    pub fn inverted(&self) -> Self {
+        use Direction::*;
+        match *self {
+            North => South,
+            East => West,
+            South => North,
+            West => East,
+        }
+    }
+}
+impl TryFrom<VectorXY> for Direction {
+    type Error = Error;
+    #[inline]
+    fn try_from(value: VectorXY) -> Result<Self, Error> {
+        use Direction::*;
+        match value {
+            VectorXY { x: 0, y: 1 } => Ok(North),
+            VectorXY { x: 1, y: 0 } => Ok(East),
+            VectorXY { x: 0, y: -1 } => Ok(South),
+            VectorXY { x: -1, y: 0 } => Ok(West),
+            _ => Err(Error::InvalidVector),
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug)]
@@ -40,17 +69,17 @@ impl Coord1D {
     cfg_if::cfg_if! {
         if #[cfg(feature = "debug")]{
             #[inline]
-            pub fn new(value: u8) -> Result<Coord1D, Error> {
-                if value > Coord1D::MAX {
+            pub fn new(value: u8) -> Result<Self, Error> {
+                if value > Self::MAX {
                     Err(Error::OutOfRange)
                 } else {
-                    Ok(Coord1D { value })
+                    Ok(Self { value })
                 }
             }
         } else {
             #[inline]
-            pub fn new(value: u8) -> Result<Coord1D, Error> {
-                Ok(Coord1D { value })
+            pub fn new(value: u8) -> Result<Self, Error> {
+                Ok(Self { value })
             }
         }
     }
@@ -67,9 +96,9 @@ pub struct CoordXY {
 }
 impl CoordXY {
     #[inline]
-    pub fn with_u8(x: u8, y: u8) -> Result<CoordXY, Error> {
+    pub fn with_u8(x: u8, y: u8) -> Result<Self, Error> {
         if let (Ok(x), Ok(y)) = (Coord1D::new(x), Coord1D::new(y)) {
-            Ok(CoordXY { x, y })
+            Ok(Self { x, y })
         } else {
             Err(Error::OutOfRange)
         }
@@ -99,6 +128,15 @@ impl Add<VectorXY> for CoordXY {
         }
     }
 }
+impl Sub<CoordXY> for CoordXY {
+    type Output = VectorXY;
+    fn sub(self, rhs: CoordXY) -> Self::Output {
+        VectorXY {
+            x: self.x.value as i8 - rhs.x.value as i8,
+            y: self.y.value as i8 - rhs.y.value as i8,
+        }
+    }
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct VectorXY {
@@ -118,17 +156,71 @@ impl From<Direction> for VectorXY {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum CellLocalLocation {
+    Center,
+    North,
+    East,
+    South,
+    West,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct AgentState {
+    pub location: CoordXY,
+    pub local_location: CellLocalLocation,
+    pub heading_vector: VectorXY,
+}
+
 #[bitfield]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct Cell {
     pub north: bool,
     pub east: bool,
-    pub west: bool,
     pub south: bool,
-    pub chk_north: bool,
-    pub chk_east: bool,
-    pub chk_west: bool,
-    pub chk_south: bool,
+    pub west: bool,
+    pub check_north: bool,
+    pub check_east: bool,
+    pub check_south: bool,
+    pub check_west: bool,
+}
+impl Cell {
+    pub fn state_by_direction(&self, direction: Direction) -> bool {
+        use Direction::*;
+        match direction {
+            North => self.north(),
+            East => self.east(),
+            South => self.south(),
+            West => self.west(),
+        }
+    }
+    pub fn check_by_direction(&self, direction: Direction) -> bool {
+        use Direction::*;
+        match direction {
+            North => self.check_north(),
+            East => self.check_east(),
+            South => self.check_south(),
+            West => self.check_west(),
+        }
+    }
+    pub fn set_state_by_direction(&mut self, direction: Direction, value: bool) {
+        use Direction::*;
+        match direction {
+            North => self.set_north(value),
+            East => self.set_east(value),
+            South => self.set_south(value),
+            West => self.set_west(value),
+        }
+    }
+    pub fn set_check_by_direction(&mut self, direction: Direction, value: bool) {
+        use Direction::*;
+        match direction {
+            North => self.set_check_north(value),
+            East => self.set_check_east(value),
+            South => self.set_check_south(value),
+            West => self.set_check_west(value),
+        }
+    }
 }
 
 #[non_exhaustive]
@@ -139,7 +231,7 @@ pub struct Maze {
     pub data: [Cell; WIDTH * WIDTH],
 }
 impl Maze {
-    pub fn new(start: CoordXY, goal: CoordXY) -> Maze {
+    pub fn new(start: CoordXY, goal: CoordXY) -> Self {
         let mut data = [Cell::new(); WIDTH * WIDTH];
         for x in 0..WIDTH {
             data[x].set_south(true);
@@ -149,10 +241,10 @@ impl Maze {
             data[y * WIDTH].set_west(true);
             data[WIDTH - 1 + y * WIDTH].set_east(true);
         }
-        Maze { start, goal, data }
+        Self { start, goal, data }
     }
-    pub fn load_from_str(maze_str: &str) -> Maze {
-        let mut maze = Maze::new(
+    pub fn load_from_str(maze_str: &str) -> Self {
+        let mut maze = Self::new(
             CoordXY::with_u8(0, 0).unwrap(),
             CoordXY::with_u8(7, 7).unwrap(),
         );
@@ -221,19 +313,19 @@ impl Maze {
         self.mutable_cell_by_x_y(coord.x, coord.y)
     }
     pub fn set_cell_state(&mut self, coord: CoordXY, direction: Direction, state: bool) {
-        match direction {
-            Direction::North => self.mutable_cell(coord).set_north(state),
-            Direction::East => self.mutable_cell(coord).set_east(state),
-            Direction::South => self.mutable_cell(coord).set_south(state),
-            Direction::West => self.mutable_cell(coord).set_west(state),
-        }
+        self.mutable_cell(coord)
+            .set_state_by_direction(direction, state);
         if let Ok(next_coord) = coord + direction.into() {
-            match direction {
-                Direction::North => self.mutable_cell(next_coord).set_south(state),
-                Direction::East => self.mutable_cell(next_coord).set_west(state),
-                Direction::South => self.mutable_cell(next_coord).set_north(state),
-                Direction::West => self.mutable_cell(next_coord).set_east(state),
-            }
+            self.mutable_cell(next_coord)
+                .set_state_by_direction(direction.inverted(), state);
+        }
+    }
+    pub fn set_cell_check(&mut self, coord: CoordXY, direction: Direction, state: bool) {
+        self.mutable_cell(coord)
+            .set_check_by_direction(direction, state);
+        if let Ok(next_coord) = coord + direction.into() {
+            self.mutable_cell(next_coord)
+                .set_check_by_direction(direction.inverted(), state);
         }
     }
 }
@@ -282,6 +374,28 @@ mod tests {
         +---+---+---+---+\n";
 
     #[test]
+    fn direction_inverted() {
+        assert!(Direction::North.inverted() == Direction::South);
+        assert!(Direction::East.inverted() == Direction::West);
+        assert!(Direction::South.inverted() == Direction::North);
+        assert!(Direction::West.inverted() == Direction::East);
+        assert!(Direction::North.inverted().inverted() == Direction::North);
+        assert!(Direction::East.inverted().inverted() == Direction::East);
+    }
+    #[test]
+    fn direction_from_vector_xy() {
+        assert!(Direction::North == VectorXY { x: 0, y: 1 }.try_into().unwrap());
+        assert!(Direction::East == VectorXY { x: 1, y: 0 }.try_into().unwrap());
+        assert!(Direction::South == VectorXY { x: 0, y: -1 }.try_into().unwrap());
+        assert!(Direction::West == VectorXY { x: -1, y: 0 }.try_into().unwrap());
+    }
+    #[test]
+    fn direction_from_vector_xy_invalid_vector() {
+        let direction: Result<Direction, Error> = VectorXY { x: 2, y: 3 }.try_into();
+        assert!(direction.is_err());
+        assert!(direction.err() == Some(Error::InvalidVector));
+    }
+    #[test]
     fn coord_1d() {
         assert!(Coord1D::new(0).unwrap().value() == 0);
     }
@@ -326,11 +440,52 @@ mod tests {
         );
     }
     #[test]
+    fn coord_xy_sub() {
+        assert!(
+            CoordXY::with_u8(2, 1).unwrap() - CoordXY::with_u8(1, 0).unwrap()
+                == VectorXY { x: 1, y: 1 }
+        );
+        assert!(
+            CoordXY::with_u8(1, 0).unwrap() - CoordXY::with_u8(1, 2).unwrap()
+                == VectorXY { x: 0, y: -2 }
+        );
+    }
+    #[test]
     fn direction_into_vector_xy() {
         assert!(VectorXY { x: 0, y: 1 } == Direction::North.into());
         assert!(VectorXY { x: 1, y: 0 } == Direction::East.into());
         assert!(VectorXY { x: 0, y: -1 } == Direction::South.into());
         assert!(VectorXY { x: -1, y: 0 } == Direction::West.into());
+    }
+    #[test]
+    fn cell_state_by_direction() {
+        let mut cell = Cell::new();
+        cell.set_east(true);
+        assert!(cell.state_by_direction(Direction::East));
+        assert!(!cell.state_by_direction(Direction::North));
+    }
+    #[test]
+    fn cell_check_by_direction() {
+        let mut cell = Cell::new();
+        cell.set_check_east(true);
+        assert!(cell.check_by_direction(Direction::East));
+        assert!(!cell.check_by_direction(Direction::North));
+    }
+    #[test]
+    fn cell_set_state_by_direction() {
+        let mut cell = Cell::new();
+        cell.set_state_by_direction(Direction::East, true);
+        assert!(cell.east());
+        cell.set_state_by_direction(Direction::East, false);
+        assert!(!cell.east());
+    }
+    #[test]
+    fn cell_set_check_by_direction() {
+        let mut cell = Cell::new();
+        cell.set_check_by_direction(Direction::East, true);
+        assert!(cell.check_east());
+        cell.set_check_by_direction(Direction::East, false);
+        assert!(!cell.check_east());
     }
     #[test]
     fn maze_new() {
