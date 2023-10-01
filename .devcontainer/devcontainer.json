@@ -9,7 +9,9 @@
                 "rust-analyzer.linkedProjects": [
                     "./Cargo.toml"
                 ],
-                "rust-analyzer.showUnlinkedFileNotification": false
+                "rust-analyzer.showUnlinkedFileNotification": false,
+                "rust-analyzer.inlayHints.chainingHints.enable": false,
+                "rust-analyzer.inlayHints.closingBraceHints.enable": false
             }
         }
     }
