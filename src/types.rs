@@ -22,6 +22,7 @@ pub enum Error {
     OutOfRange,
     InvalidLocation,
     InvalidDirection,
+    InvalidVector,
 }
 
 #[non_exhaustive]
@@ -31,6 +32,32 @@ pub enum Direction {
     East,
     South,
     West,
+}
+impl Direction {
+    #[inline]
+    pub fn inverted(&self) -> Self {
+        use Direction::*;
+        match *self {
+            North => South,
+            East => West,
+            South => North,
+            West => East,
+        }
+    }
+}
+impl TryFrom<VectorXY> for Direction {
+    type Error = Error;
+    #[inline]
+    fn try_from(value: VectorXY) -> Result<Self, Error> {
+        use Direction::*;
+        match value {
+            VectorXY { x: 0, y: 1 } => Ok(North),
+            VectorXY { x: 1, y: 0 } => Ok(East),
+            VectorXY { x: 0, y: -1 } => Ok(South),
+            VectorXY { x: -1, y: 0 } => Ok(West),
+            _ => Err(Error::InvalidVector),
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Debug)]
@@ -328,6 +355,28 @@ mod tests {
         |       |        \n\
         +---+---+---+---+\n";
 
+    #[test]
+    fn direction_inverted() {
+        assert!(Direction::North.inverted() == Direction::South);
+        assert!(Direction::East.inverted() == Direction::West);
+        assert!(Direction::South.inverted() == Direction::North);
+        assert!(Direction::West.inverted() == Direction::East);
+        assert!(Direction::North.inverted().inverted() == Direction::North);
+        assert!(Direction::East.inverted().inverted() == Direction::East);
+    }
+    #[test]
+    fn direction_from_vector_xy() {
+        assert!(Direction::North == VectorXY { x: 0, y: 1 }.try_into().unwrap());
+        assert!(Direction::East == VectorXY { x: 1, y: 0 }.try_into().unwrap());
+        assert!(Direction::South == VectorXY { x: 0, y: -1 }.try_into().unwrap());
+        assert!(Direction::West == VectorXY { x: -1, y: 0 }.try_into().unwrap());
+    }
+    #[test]
+    fn direction_from_vector_xy_invalid_vector() {
+        let direction: Result<Direction, Error> = VectorXY { x: 2, y: 3 }.try_into();
+        assert!(direction.is_err());
+        assert!(direction.err() == Some(Error::InvalidVector));
+    }
     #[test]
     fn coord_1d() {
         assert!(Coord1D::new(0).unwrap().value() == 0);
