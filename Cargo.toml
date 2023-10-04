@@ -15,5 +15,5 @@ maze_16x16 = []
 maze_32x32 = []
 debug = []
 
-[[example]]
-name = "example"
+[[display_maze]]
+name = "display_maze"
