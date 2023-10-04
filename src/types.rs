@@ -96,7 +96,7 @@ pub struct CoordXY {
 }
 impl CoordXY {
     #[inline]
-    pub fn with_u8(x: u8, y: u8) -> Result<Self, Error> {
+    pub fn new(x: u8, y: u8) -> Result<Self, Error> {
         if let (Ok(x), Ok(y)) = (Coord1D::new(x), Coord1D::new(y)) {
             Ok(Self { x, y })
         } else {
@@ -122,7 +122,7 @@ impl Add<VectorXY> for CoordXY {
             && (new_x as u8) <= Coord1D::MAX
             && (new_y as u8) <= Coord1D::MAX
         {
-            Ok(CoordXY::with_u8(new_x as u8, new_y as u8).unwrap())
+            Ok(CoordXY::new(new_x as u8, new_y as u8).unwrap())
         } else {
             Err(Error::OutOfRange)
         }
@@ -244,10 +244,7 @@ impl Maze {
         Self { start, goal, data }
     }
     pub fn load_from_str(maze_str: &str) -> Self {
-        let mut maze = Self::new(
-            CoordXY::with_u8(0, 0).unwrap(),
-            CoordXY::with_u8(7, 7).unwrap(),
-        );
+        let mut maze = Self::new(CoordXY::new(0, 0).unwrap(), CoordXY::new(7, 7).unwrap());
         let mut width = 0;
         // TODO: Support arbitrary size
         for w in [32, 16, 9, 8, 4] {
@@ -260,7 +257,7 @@ impl Maze {
         if (width > WIDTH) || (width == 0) {
             panic!("Loaded data has invalid size {}", width);
         }
-        let mut coord = CoordXY::with_u8(0, (width - 1) as u8).unwrap();
+        let mut coord = CoordXY::new(0, (width - 1) as u8).unwrap();
         for (line_no, s) in maze_str.split('\n').enumerate() {
             coord.y = Coord1D::new((width - 1 - line_no / 2) as u8).unwrap();
             if line_no % 2 == 0 {
@@ -339,7 +336,7 @@ impl fmt::Display for Maze {
             writeln!(f, "+").unwrap();
             for x in 0..WIDTH {
                 let cell = self.data[x + y * WIDTH];
-                let coord = CoordXY::with_u8(x as u8, y as u8).unwrap();
+                let coord = CoordXY::new(x as u8, y as u8).unwrap();
                 let mut cell_mark = " ";
                 if self.start == coord {
                     cell_mark = "S";
@@ -413,53 +410,53 @@ mod tests {
         assert_eq!(Coord1D::new(255), Err(Error::OutOfRange));
     }
     #[test]
-    fn coord_xy_with_u8() {
-        let c = CoordXY::with_u8(0, 1).unwrap();
+    fn coord_xy_new() {
+        let c = CoordXY::new(0, 1).unwrap();
         assert_eq!(c.x(), Coord1D::new(0).unwrap());
         assert_eq!(c.y(), Coord1D::new(1).unwrap());
     }
     #[test]
-    fn coord_xy_with_u8_out_of_range() {
-        assert_eq!(CoordXY::with_u8(0, 255), Err(Error::OutOfRange));
+    fn coord_xy_new_out_of_range() {
+        assert_eq!(CoordXY::new(0, 255), Err(Error::OutOfRange));
     }
     #[test]
     fn coord_xy_add() {
         assert_eq!(
-            CoordXY::with_u8(0, 0).unwrap() + Direction::North.into(),
-            Ok(CoordXY::with_u8(0, 1).unwrap())
+            CoordXY::new(0, 0).unwrap() + Direction::North.into(),
+            Ok(CoordXY::new(0, 1).unwrap())
         );
         assert_eq!(
-            CoordXY::with_u8(0, 0).unwrap() + Direction::East.into(),
-            Ok(CoordXY::with_u8(1, 0).unwrap())
+            CoordXY::new(0, 0).unwrap() + Direction::East.into(),
+            Ok(CoordXY::new(1, 0).unwrap())
         );
     }
     #[test]
     fn coord_xy_add_out_of_range() {
         assert_eq!(
-            CoordXY::with_u8(0, 0).unwrap() + Direction::West.into(),
+            CoordXY::new(0, 0).unwrap() + Direction::West.into(),
             Err(Error::OutOfRange)
         );
         assert_eq!(
-            CoordXY::with_u8(0, 0).unwrap() + Direction::South.into(),
+            CoordXY::new(0, 0).unwrap() + Direction::South.into(),
             Err(Error::OutOfRange)
         );
         assert_eq!(
-            CoordXY::with_u8(Coord1D::MAX, 0).unwrap() + Direction::East.into(),
+            CoordXY::new(Coord1D::MAX, 0).unwrap() + Direction::East.into(),
             Err(Error::OutOfRange)
         );
         assert_eq!(
-            CoordXY::with_u8(0, Coord1D::MAX).unwrap() + Direction::North.into(),
+            CoordXY::new(0, Coord1D::MAX).unwrap() + Direction::North.into(),
             Err(Error::OutOfRange)
         );
     }
     #[test]
     fn coord_xy_sub() {
         assert_eq!(
-            CoordXY::with_u8(2, 1).unwrap() - CoordXY::with_u8(1, 0).unwrap(),
+            CoordXY::new(2, 1).unwrap() - CoordXY::new(1, 0).unwrap(),
             VectorXY { x: 1, y: 1 }
         );
         assert_eq!(
-            CoordXY::with_u8(1, 0).unwrap() - CoordXY::with_u8(1, 2).unwrap(),
+            CoordXY::new(1, 0).unwrap() - CoordXY::new(1, 2).unwrap(),
             VectorXY { x: 0, y: -2 }
         );
     }
@@ -502,12 +499,9 @@ mod tests {
     }
     #[test]
     fn maze_new() {
-        let maze = Maze::new(
-            CoordXY::with_u8(0, 0).unwrap(),
-            CoordXY::with_u8(1, 1).unwrap(),
-        );
-        assert_eq!(maze.start, CoordXY::with_u8(0, 0).unwrap());
-        assert_eq!(maze.goal, CoordXY::with_u8(1, 1).unwrap());
+        let maze = Maze::new(CoordXY::new(0, 0).unwrap(), CoordXY::new(1, 1).unwrap());
+        assert_eq!(maze.start, CoordXY::new(0, 0).unwrap());
+        assert_eq!(maze.goal, CoordXY::new(1, 1).unwrap());
         assert!(!maze.data[0].north());
         assert!(!maze.data[0].east());
         assert!(maze.data[0].south());
@@ -515,37 +509,28 @@ mod tests {
     }
     #[test]
     fn maze_cell() {
-        let mut maze = Maze::new(
-            CoordXY::with_u8(0, 0).unwrap(),
-            CoordXY::with_u8(7, 7).unwrap(),
-        );
+        let mut maze = Maze::new(CoordXY::new(0, 0).unwrap(), CoordXY::new(7, 7).unwrap());
         maze.data[0].set_north(true);
-        let mut cell = maze.cell(CoordXY::with_u8(0, 0).unwrap());
+        let mut cell = maze.cell(CoordXY::new(0, 0).unwrap());
         assert!(cell.north());
         cell.set_east(true);
         // Since `cell` is just a copy, set_east does not affect the original object
-        assert!(!maze.cell(CoordXY::with_u8(0, 0).unwrap()).east());
+        assert!(!maze.cell(CoordXY::new(0, 0).unwrap()).east());
     }
     #[test]
     fn maze_mutable_cell() {
-        let mut maze = Maze::new(
-            CoordXY::with_u8(0, 0).unwrap(),
-            CoordXY::with_u8(7, 7).unwrap(),
-        );
+        let mut maze = Maze::new(CoordXY::new(0, 0).unwrap(), CoordXY::new(7, 7).unwrap());
         maze.data[0].set_north(true);
-        let cell = maze.mutable_cell(CoordXY::with_u8(0, 0).unwrap());
+        let cell = maze.mutable_cell(CoordXY::new(0, 0).unwrap());
         assert!(cell.north());
         cell.set_east(true);
         // Since `cell` is a mutable reference, set_east affects the original object
-        assert!(maze.mutable_cell(CoordXY::with_u8(0, 0).unwrap()).east());
+        assert!(maze.mutable_cell(CoordXY::new(0, 0).unwrap()).east());
     }
     #[test]
     fn maze_set_cell_state() {
-        let mut maze = Maze::new(
-            CoordXY::with_u8(0, 0).unwrap(),
-            CoordXY::with_u8(7, 7).unwrap(),
-        );
-        maze.set_cell_state(CoordXY::with_u8(0, 0).unwrap(), Direction::North, true);
+        let mut maze = Maze::new(CoordXY::new(0, 0).unwrap(), CoordXY::new(7, 7).unwrap());
+        maze.set_cell_state(CoordXY::new(0, 0).unwrap(), Direction::North, true);
         assert!(maze
             .cell_by_x_y(Coord1D::new(0).unwrap(), Coord1D::new(0).unwrap())
             .north());

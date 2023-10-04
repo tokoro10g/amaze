@@ -10,7 +10,7 @@ impl Graph {
     fn coord_xy_by_node_index(index: NodeIndex<Self>) -> Result<CoordXY, Error> {
         let x = (index.value as u8) % WIDTH as u8;
         let y = (index.value as u8) / WIDTH as u8;
-        CoordXY::with_u8(x, y)
+        CoordXY::new(x, y)
     }
     fn vector_xy_by_node_index_pair(from: NodeIndex<Self>, to: NodeIndex<Self>) -> VectorXY {
         Self::coord_xy_by_node_index(to).unwrap() - Self::coord_xy_by_node_index(from).unwrap()
@@ -35,10 +35,10 @@ impl Graph {
 }
 impl GraphBase for Graph {
     const MAX_NODE_INDEX: NodeIndexValue = WIDTH as NodeIndexValue * WIDTH as NodeIndexValue - 1;
-    fn distance(from: NodeIndex<Graph>, to: NodeIndex<Graph>) -> Cost {
-        Graph::optimistic_distance(from, to)
+    fn cost(from: NodeIndex<Graph>, to: NodeIndex<Graph>) -> Cost {
+        Graph::optimistic_cost(from, to)
     }
-    fn optimistic_distance(from: NodeIndex<Graph>, to: NodeIndex<Graph>) -> Cost {
+    fn optimistic_cost(from: NodeIndex<Graph>, to: NodeIndex<Graph>) -> Cost {
         let vector = Self::vector_xy_by_node_index_pair(from, to);
         vector.x.abs() as Cost + vector.y.abs() as Cost
     }
@@ -49,7 +49,7 @@ impl GraphBase for Graph {
         let x = (index.value as u8) % WIDTH as u8;
         let y = (index.value as u8) / WIDTH as u8;
         let mut state = AgentState {
-            location: CoordXY::with_u8(x, y).unwrap(),
+            location: CoordXY::new(x, y).unwrap(),
             local_location: CellLocalLocation::Center,
             heading_vector: VectorXY { x: 0, y: 0 },
         };
@@ -142,7 +142,7 @@ mod tests {
     #[test]
     fn node_index_by_coord_xy() {
         assert_eq!(
-            Graph::node_index_by_coord_xy(CoordXY::with_u8(2, 4).unwrap())
+            Graph::node_index_by_coord_xy(CoordXY::new(2, 4).unwrap())
                 .unwrap()
                 .value,
             WIDTH as NodeIndexValue * 4 + 2
@@ -161,16 +161,16 @@ mod tests {
         assert_eq!(edge.to.value, 1);
     }
     #[test]
-    fn distance() {
-        let d = Graph::distance(
+    fn cost() {
+        let d = Graph::cost(
             NodeIndex::new(1).unwrap(),
             NodeIndex::new(WIDTH as NodeIndexValue + 3).unwrap(),
         );
         assert_eq!(d, 3);
     }
     #[test]
-    fn optimistic_distance() {
-        let d = Graph::optimistic_distance(
+    fn optimistic_cost() {
+        let d = Graph::optimistic_cost(
             NodeIndex::new(1).unwrap(),
             NodeIndex::new(WIDTH as NodeIndexValue + 3).unwrap(),
         );
@@ -201,7 +201,7 @@ mod tests {
     #[test]
     fn node_index_by_agent_state() {
         let node_index = Graph::node_index_by_agent_state(AgentState {
-            location: CoordXY::with_u8(2, 3).unwrap(),
+            location: CoordXY::new(2, 3).unwrap(),
             local_location: CellLocalLocation::Center,
             heading_vector: VectorXY { x: 0, y: 0 },
         })
@@ -211,7 +211,7 @@ mod tests {
     #[test]
     fn node_index_by_agent_state_with_invalid_local_location() {
         let node_index_result = Graph::node_index_by_agent_state(AgentState {
-            location: CoordXY::with_u8(2, 3).unwrap(),
+            location: CoordXY::new(2, 3).unwrap(),
             local_location: CellLocalLocation::North,
             heading_vector: VectorXY { x: 0, y: 0 },
         });

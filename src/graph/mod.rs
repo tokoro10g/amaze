@@ -80,7 +80,7 @@ impl<T: GraphBase> Edge<T> {
         Self {
             from,
             to,
-            cost: T::distance(from, to),
+            cost: T::cost(from, to),
         }
     }
     #[inline]
@@ -114,8 +114,8 @@ pub struct Route<T: GraphBase> {
 
 pub trait GraphBase: Sized {
     const MAX_NODE_INDEX: NodeIndexValue;
-    fn distance(from: NodeIndex<Self>, to: NodeIndex<Self>) -> Cost;
-    fn optimistic_distance(from: NodeIndex<Self>, to: NodeIndex<Self>) -> Cost;
+    fn cost(from: NodeIndex<Self>, to: NodeIndex<Self>) -> Cost;
+    fn optimistic_cost(from: NodeIndex<Self>, to: NodeIndex<Self>) -> Cost;
     fn agent_state_by_node_index(
         index: NodeIndex<Self>,
         from_index: Option<NodeIndex<Self>>,
@@ -132,10 +132,10 @@ mod tests {
     pub struct DummyGraph {}
     impl GraphBase for DummyGraph {
         const MAX_NODE_INDEX: NodeIndexValue = 10;
-        fn distance(_from: NodeIndex<Self>, _to: NodeIndex<Self>) -> Cost {
+        fn cost(_from: NodeIndex<Self>, _to: NodeIndex<Self>) -> Cost {
             1
         }
-        fn optimistic_distance(_from: NodeIndex<Self>, _to: NodeIndex<Self>) -> Cost {
+        fn optimistic_cost(_from: NodeIndex<Self>, _to: NodeIndex<Self>) -> Cost {
             1
         }
         fn agent_state_by_node_index(
@@ -143,7 +143,7 @@ mod tests {
             _from_index: Option<NodeIndex<Self>>,
         ) -> AgentState {
             AgentState {
-                location: CoordXY::with_u8(0, 0).unwrap(),
+                location: CoordXY::new(0, 0).unwrap(),
                 local_location: CellLocalLocation::Center,
                 heading_vector: VectorXY { x: 0, y: 1 },
             }
@@ -178,7 +178,7 @@ mod tests {
                 .unwrap()
                 .to_agent_state(None),
             AgentState {
-                location: CoordXY::with_u8(0, 0).unwrap(),
+                location: CoordXY::new(0, 0).unwrap(),
                 local_location: CellLocalLocation::Center,
                 heading_vector: VectorXY { x: 0, y: 1 },
             }
@@ -200,7 +200,7 @@ mod tests {
         assert_eq!(
             agent_state,
             AgentState {
-                location: CoordXY::with_u8(0, 0).unwrap(),
+                location: CoordXY::new(0, 0).unwrap(),
                 local_location: CellLocalLocation::Center,
                 heading_vector: VectorXY { x: 0, y: 1 },
             }
@@ -214,7 +214,7 @@ mod tests {
         assert_eq!(
             agent_state,
             AgentState {
-                location: CoordXY::with_u8(0, 0).unwrap(),
+                location: CoordXY::new(0, 0).unwrap(),
                 local_location: CellLocalLocation::Center,
                 heading_vector: VectorXY { x: 0, y: 1 },
             }
